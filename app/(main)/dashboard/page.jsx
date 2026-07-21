@@ -1,11 +1,223 @@
-import React from 'react'
+"use client";
 
-const DashboardPage = () => {
+import { api } from "../../../convex/_generated/api";
+import { useConvexQuery } from "../../../hooks/use-convex-query";
+import { BarLoader } from "react-spinners";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { PlusCircle, Users, CreditCard, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ExpenseSummary } from "./components/expense-summary";
+import { BalanceSummary } from "./components/balance-summary";
+import { GroupList } from "./components/group-list";
+
+export default function Dashboard() {
+  const { data: balances, isLoading: balancesLoading } = useConvexQuery(
+    api.dashboard.getUserBalances,
+  );
+
+  const { data: groups, isLoading: groupsLoading } = useConvexQuery(
+    api.dashboard.getUserGroups,
+  );
+
+  const { data: totalSpent, isLoading: totalSpentLoading } = useConvexQuery(
+    api.dashboard.getTotalSpent,
+  );
+
+  const { data: monthlySpending, isLoading: monthlySpendingLoading } =
+    useConvexQuery(api.dashboard.getMonthlySpending);
+
+  const isLoading =
+    balancesLoading ||
+    groupsLoading ||
+    totalSpentLoading ||
+    monthlySpendingLoading;
+
   return (
-    <div>
-      Dashboard Page
-    </div>
-  )
-}
+    <div className="container mx-auto py-6 space-y-6 bg-[#FFF1E8]">
+      {isLoading ? (
+        <div className="w-full py-12 flex justify-center">
+          <BarLoader width={"100%"} color="#6CBD45" height={6} />
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-between flex-col sm:flex-row sm:items-center gap-4">
+            <h1 className="text-5xl font-bold text-black">Dashboard</h1>
+            <Button
+              asChild
+              className="px-6 py-3 text-sm font-bold border-4 border-black bg-[#6CBD45] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all whitespace-nowrap"
+            >
+              <Link href="/expenses/new">
+                <PlusCircle className="mr-2 h-4 w-4 inline-block" />
+                Add expense
+              </Link>
+            </Button>
+          </div>
 
-export default DashboardPage
+          {/* Balance overview cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-black/70">
+                  Total Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {balances?.totalBalance > 0 ? (
+                    <span className="text-[#6CBD45]">
+                      +${balances?.totalBalance.toFixed(2)}
+                    </span>
+                  ) : balances?.totalBalance < 0 ? (
+                    <span className="text-[#FF5052]">
+                      -${Math.abs(balances?.totalBalance).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-black">$0.00</span>
+                  )}
+                </div>
+                <p className="text-xs font-medium text-black/70 mt-1">
+                  {balances?.totalBalance > 0
+                    ? "You are owed money"
+                    : balances?.totalBalance < 0
+                      ? "You owe money"
+                      : "All settled up!"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-black/70">
+                  You are owed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#6CBD45]">
+                  ${balances?.youAreOwed.toFixed(2)}
+                </div>
+                <p className="text-xs font-medium text-black/70 mt-1">
+                  From {balances?.oweDetails?.youAreOwedBy?.length || 0} people
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-black/70">
+                  You owe
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {balances?.oweDetails?.youOwe?.length > 0 ? (
+                  <>
+                    <div className="text-2xl font-bold text-[#FF5052]">
+                      ${balances?.youOwe.toFixed(2)}
+                    </div>
+                    <p className="text-xs font-medium text-black/70 mt-1">
+                      To {balances?.oweDetails?.youOwe?.length || 0} people
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-black">$0.00</div>
+                    <p className="text-xs font-medium text-black/70 mt-1">
+                      You don't owe anyone
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main dashboard content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left column */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Expense summary */}
+              <ExpenseSummary
+                monthlySpending={monthlySpending}
+                totalSpent={totalSpent}
+              />
+            </div>
+
+            {/* Right column */}
+            <div className="space-y-6">
+              {/* Balance details */}
+              <Card className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="font-bold text-black">
+                      Balance Details
+                    </CardTitle>
+                    <Button
+                      variant="link"
+                      asChild
+                      className="p-0 font-bold text-[#fd5d53] hover:text-[#fd5d53]/80"
+                    >
+                      <Link
+                        href="/contacts"
+                        className="flex items-center gap-1"
+                      >
+                        View all
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <BalanceSummary balances={balances} />
+                </CardContent>
+              </Card>
+
+              {/* Groups */}
+              <Card className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="font-bold text-black">
+                      Your Groups
+                    </CardTitle>
+                    <Button
+                      variant="link"
+                      asChild
+                      className="p-0 font-bold text-[#fd5d53] hover:text-[#fd5d53]/80"
+                    >
+                      <Link
+                        href="/contacts"
+                        className="flex items-center gap-1"
+                      >
+                        View all
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <GroupList groups={groups} />
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    variant="outline"
+                    asChild
+                    className="w-full border-4 border-black bg-[#FFDC02] text-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Link href="/contacts?createGroup=true">
+                      <Users className="h-4 w-4 inline-block" />
+                      Create new group
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
